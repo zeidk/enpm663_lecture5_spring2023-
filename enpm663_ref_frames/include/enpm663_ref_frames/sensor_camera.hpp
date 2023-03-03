@@ -23,8 +23,7 @@ public:
          */
         cb_group_bin_cameras_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
         cb_group_kit_tray_cameras_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-        cb_group_kit_tray_cameras_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-
+        cb_group_competition_state_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
         // Each of these callback groups is basically a thread
         // Everything assigned to one of them gets bundled into the same thread
 
@@ -36,6 +35,8 @@ public:
 
         auto competition_state_option = rclcpp::SubscriptionOptions();
         competition_state_option.callback_group = cb_group_competition_state_;
+
+    
 
         // Subscribers
 
@@ -63,6 +64,14 @@ public:
 
         // Initialize the transforms broadcaster
         tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+        // Load a buffer of transforms
+        tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+        // Listen to the buffer of transforms
+        tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
+
+        // Initialize the parts timer callback
+        parts_timer_callback_ = this->create_wall_timer(std::chrono::milliseconds((int)(1000.0)),
+                                                       std::bind(&SensorCamera::PartsTimerCallback, this));
     }
 
     ~SensorCamera() {}
@@ -73,21 +82,15 @@ public:
     bool StartCompetition();
 
 private:
-    /*!< Listener for the broadcast transform message. */
-    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
-    /*!< Buffer that stores several seconds of transforms for easy lookup by the listener. */
-    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
-    /*!< Pose in source frame. */
-    geometry_msgs::msg::PoseStamped pose_in_;
-    /*!< Pose in target frame (world). */
-    geometry_msgs::msg::PoseStamped pose_out_;
+    
     /*!< Current state of the competition. */
-    bool competition_started_ = false;
     int competition_state_ = -1;
-    /*!< Callback group for all subscribers. */
+    /*!< Callback group for subscribers. */
     rclcpp::CallbackGroup::SharedPtr cb_group_competition_state_;
     rclcpp::CallbackGroup::SharedPtr cb_group_bin_cameras_;
     rclcpp::CallbackGroup::SharedPtr cb_group_kit_tray_cameras_;
+    /*!< Pointer to timer base. */
+    rclcpp::TimerBase::SharedPtr parts_timer_callback_;
 
     /*==============
     Services
@@ -101,6 +104,14 @@ private:
     std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
     /*!< Transform message to broadcast. */
     geometry_msgs::msg::TransformStamped transf_;
+    /*!< Listener for the broadcast transform message. */
+    std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+    /*!< Buffer that stores several seconds of transforms for easy lookup by the listener. */
+    std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+    /*!< Pose in source frame. */
+    geometry_msgs::msg::PoseStamped pose_in_;
+    /*!< Pose in target frame (world). */
+    geometry_msgs::msg::PoseStamped pose_out_;
 
     /*==============
     Subscribers
@@ -124,7 +135,11 @@ private:
     void RightBinsCameraCallback(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void CompetitionStateCallback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
     /*===================================
-    Service Callbacks
+    Timer Callbacks
     =====================================*/
-    void StartCompetitionServiceCallback(rclcpp::Client<std_srvs::srv::Trigger>::SharedFuture future);
+    void PartsTimerCallback();
+    /*===================================
+    Transforms
+    =====================================*/
+    void ListenTransform(const std::string &source_frame);
 };

@@ -11,6 +11,11 @@
 
 using namespace std::chrono_literals;
 
+// ================================
+void SensorCamera::PartsTimerCallback()
+{
+}
+// ================================
 void SensorCamera::CompetitionStateCallback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg)
 {
     competition_state_ = msg->competition_state;
@@ -25,22 +30,6 @@ void SensorCamera::KitTrayTable1Callback(const ariac_msgs::msg::AdvancedLogicalC
 void SensorCamera::KitTrayTable2Callback(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg)
 {
     auto part_poses = msg->part_poses;
-}
-// ================================
-void SensorCamera::LeftBinsCameraCallback(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg)
-{
-    RCLCPP_INFO_ONCE(this->get_logger(), "------ LeftBinsCameraCallback");
-    auto part_poses = msg->part_poses;
-    RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Number of models: " << part_poses.size());
-    for (auto part_pose : part_poses)
-    {
-        auto part = part_pose.part;
-        RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Part type: " << (int)part.type);
-        RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Part color: " << (int)part.color);
-        auto pose = part_pose.pose;
-        RCLCPP_INFO_ONCE(this->get_logger(), "Position: %f, %f, %f", pose.position.x, pose.position.y, pose.position.z);
-        RCLCPP_INFO_ONCE(this->get_logger(), "Orientation: %f, %f, %f, %f", pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
-    }
 }
 
 //==============================================================================
@@ -88,11 +77,27 @@ std::string static ConvertPartColorToString(unsigned int part_color)
 }
 
 // ================================
+void SensorCamera::LeftBinsCameraCallback(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg)
+{
+    RCLCPP_INFO_ONCE(this->get_logger(), "------ LeftBinsCameraCallback");
+    auto part_poses = msg->part_poses;
+    RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Number of models: " << part_poses.size());
+    for (auto part_pose : part_poses)
+    {
+        auto part = part_pose.part;
+        RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Part type: " << (int)part.type);
+        RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Part color: " << (int)part.color);
+        auto pose = part_pose.pose;
+        RCLCPP_INFO_ONCE(this->get_logger(), "Position: %f, %f, %f", pose.position.x, pose.position.y, pose.position.z);
+        RCLCPP_INFO_ONCE(this->get_logger(), "Orientation: %f, %f, %f, %f", pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
+    }
+}
+
+// ================================
 void SensorCamera::RightBinsCameraCallback(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg)
 {
     // Set frame
     transf_.header.frame_id = "right_bins_camera_frame";
-    
 
     RCLCPP_INFO_ONCE(this->get_logger(), "------ RightBinsCameraCallback");
     auto part_poses = msg->part_poses;
@@ -128,13 +133,54 @@ void SensorCamera::RightBinsCameraCallback(const ariac_msgs::msg::AdvancedLogica
 
         // Publish transform
         tf_broadcaster_->sendTransform(transf_);
+
+        auto pose_in = geometry_msgs::msg::PoseStamped();
+        pose_in.pose.position.x = transf_.transform.translation.x;
+        pose_in.pose.position.y = transf_.transform.translation.y;
+        pose_in.pose.position.z = transf_.transform.translation.z;
+        pose_in.pose.orientation.x = transf_.transform.rotation.x;
+        pose_in.pose.orientation.y = transf_.transform.rotation.y;
+        pose_in.pose.orientation.z = transf_.transform.rotation.z;
+        pose_in.pose.orientation.w = transf_.transform.rotation.w;
+
+        ListenTransform(transf_.child_frame_id);
     }
 }
 
+// ================================
+void SensorCamera::ListenTransform(const std::string &source_frame)
+{
+    geometry_msgs::msg::TransformStamped t;
+    geometry_msgs::msg::Pose pose_out;
+
+    try
+    {
+        t = tf_buffer_->lookupTransform("world", source_frame, tf2::TimePointZero);
+    }
+    catch (const tf2::TransformException &ex)
+    {
+        RCLCPP_ERROR(this->get_logger(), "Could not get transform");
+    }
+
+    pose_out.position.x = t.transform.translation.x;
+    pose_out.position.y = t.transform.translation.y;
+    pose_out.position.z = t.transform.translation.z;
+    pose_out.orientation = t.transform.rotation;
+
+    RCLCPP_INFO(this->get_logger(), "Object pose in 'world' is:\n x,y,z = %.1f,%.1f,%.1f",
+                pose_out.position.x,
+                pose_out.position.y,
+                pose_out.position.z);
+}
 
 // ================================
 bool SensorCamera::StartCompetition()
 {
+    if (competition_state_ == ariac_msgs::msg::CompetitionState::STARTED)
+    {
+        RCLCPP_ERROR(this->get_logger(), "Competition already started.");
+        return true;
+    }
     // Wait for competition state to be ready
     while (competition_state_ != ariac_msgs::msg::CompetitionState::READY)
     {
