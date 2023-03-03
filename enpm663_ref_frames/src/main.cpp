@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
         .detach();
     // Start Competition
     node->StartCompetition();
+    // Replace the following line with functions to do pick and place
     while (rclcpp::ok())
     {
     }
