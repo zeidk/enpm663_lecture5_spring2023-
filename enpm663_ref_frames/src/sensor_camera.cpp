@@ -14,22 +14,55 @@
 
 using namespace std::chrono_literals;
 
-// ================================
-void SensorCamera::PartsTimerCallback()
+//==============================================================================
+
+std::string SensorCamera::ConvertPartTypeToString(unsigned int part_type)
 {
+    if (part_type == ariac_msgs::msg::Part::BATTERY)
+        return "battery";
+    else if (part_type == ariac_msgs::msg::Part::PUMP)
+        return "pump";
+    else if (part_type == ariac_msgs::msg::Part::REGULATOR)
+        return "regulator";
+    else if (part_type == ariac_msgs::msg::Part::SENSOR)
+        return "sensor";
+    else
+        return "unknown";
+}
+
+//==============================================================================
+
+std::string SensorCamera::ConvertPartColorToString(unsigned int part_color)
+{
+    if (part_color == ariac_msgs::msg::Part::RED)
+        return "red";
+    else if (part_color == ariac_msgs::msg::Part::GREEN)
+        return "green";
+    else if (part_color == ariac_msgs::msg::Part::BLUE)
+        return "blue";
+    else if (part_color == ariac_msgs::msg::Part::PURPLE)
+        return "purple";
+    else if (part_color == ariac_msgs::msg::Part::ORANGE)
+        return "orange";
+    else
+        return "unknown";
 }
 // ================================
 geometry_msgs::msg::Pose SensorCamera::MultiplyPose(
     geometry_msgs::msg::Pose p1, geometry_msgs::msg::Pose p2)
 {
+    // create KDL frames from the geometry_msgs::msg::Pose
     KDL::Frame f1;
     KDL::Frame f2;
 
+    // convert poses to KDL frames
     tf2::fromMsg(p1, f1);
     tf2::fromMsg(p2, f2);
 
+    // multiply the KDL frames
     KDL::Frame f3 = f1 * f2;
 
+    // convert KDL frames to poses
     return tf2::toMsg(f3);
 }
 // ================================
@@ -49,49 +82,7 @@ void SensorCamera::KitTrayTable2Callback(const ariac_msgs::msg::AdvancedLogicalC
     auto part_poses = msg->part_poses;
 }
 
-//==============================================================================
-/**
- * @brief Helper function to convert a part type to a string
- *
- * @param part_type  Part type as an unsigned int
- * @return std::string  Part type as a string
- */
-std::string static ConvertPartTypeToString(unsigned int part_type)
-{
-    if (part_type == ariac_msgs::msg::Part::BATTERY)
-        return "battery";
-    else if (part_type == ariac_msgs::msg::Part::PUMP)
-        return "pump";
-    else if (part_type == ariac_msgs::msg::Part::REGULATOR)
-        return "regulator";
-    else if (part_type == ariac_msgs::msg::Part::SENSOR)
-        return "sensor";
-    else
-        return "unknown";
-}
 
-//==============================================================================
-/**
- * @brief Helper function to convert a part color to a string
- *
- * @param part_color  Part color as an unsigned int
- * @return std::string  Part color as a string
- */
-std::string static ConvertPartColorToString(unsigned int part_color)
-{
-    if (part_color == ariac_msgs::msg::Part::RED)
-        return "red";
-    else if (part_color == ariac_msgs::msg::Part::GREEN)
-        return "green";
-    else if (part_color == ariac_msgs::msg::Part::BLUE)
-        return "blue";
-    else if (part_color == ariac_msgs::msg::Part::PURPLE)
-        return "purple";
-    else if (part_color == ariac_msgs::msg::Part::ORANGE)
-        return "orange";
-    else
-        return "unknown";
-}
 
 // ================================
 void SensorCamera::LeftBinsCameraCallback(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg)
@@ -106,16 +97,16 @@ void SensorCamera::LeftBinsCameraCallback(const ariac_msgs::msg::AdvancedLogical
         auto part = part_pose.part;
         RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Part type: " << (int)part.type);
         RCLCPP_INFO_STREAM_ONCE(this->get_logger(), "Part color: " << (int)part.color);
-        auto pose_in_camera_frame = part_pose.pose;
-        RCLCPP_INFO_ONCE(this->get_logger(), "Position: %f, %f, %f", pose_in_camera_frame.position.x, pose_in_camera_frame.position.y, pose_in_camera_frame.position.z);
-        RCLCPP_INFO_ONCE(this->get_logger(), "Orientation: %f, %f, %f, %f", pose_in_camera_frame.orientation.x, pose_in_camera_frame.orientation.y, pose_in_camera_frame.orientation.z, pose_in_camera_frame.orientation.w);
+        auto part_in_camera_frame = part_pose.pose;
+        RCLCPP_INFO_ONCE(this->get_logger(), "Position: %f, %f, %f", part_in_camera_frame.position.x, part_in_camera_frame.position.y, part_in_camera_frame.position.z);
+        RCLCPP_INFO_ONCE(this->get_logger(), "Orientation: %f, %f, %f, %f", part_in_camera_frame.orientation.x, part_in_camera_frame.orientation.y, part_in_camera_frame.orientation.z, part_in_camera_frame.orientation.w);
 
-        geometry_msgs::msg::Pose part_pose_in_world = MultiplyPose(camera_pose_in_world_frame, pose_in_camera_frame);
+        geometry_msgs::msg::Pose part_in_world = MultiplyPose(camera_pose_in_world_frame, part_in_camera_frame);
 
         RCLCPP_INFO(this->get_logger(), "Left bins parts in 'world' is:\n x,y,z = %.1f,%.1f,%.1f",
-                    part_pose_in_world.position.x,
-                    part_pose_in_world.position.y,
-                    part_pose_in_world.position.z);
+                    part_in_world.position.x,
+                    part_in_world.position.y,
+                    part_in_world.position.z);
     }
 
 

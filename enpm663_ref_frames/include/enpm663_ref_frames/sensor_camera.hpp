@@ -36,28 +36,26 @@ public:
         auto competition_state_option = rclcpp::SubscriptionOptions();
         competition_state_option.callback_group = cb_group_competition_state_;
 
-    
-
         // Subscribers
 
         kit_tray_table1_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
-            "/ariac/sensors/kts1_camera/image", rclcpp::SensorDataQoS(), 
+            "/ariac/sensors/kts1_camera/image", rclcpp::SensorDataQoS(),
             std::bind(&SensorCamera::KitTrayTable1Callback, this, std::placeholders::_1), kit_tray_cameras_option);
 
         kit_tray_table2_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
-            "/ariac/sensors/kts2_camera/image", rclcpp::SensorDataQoS(), 
+            "/ariac/sensors/kts2_camera/image", rclcpp::SensorDataQoS(),
             std::bind(&SensorCamera::KitTrayTable1Callback, this, std::placeholders::_1), kit_tray_cameras_option);
-        
+
         left_bins_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
-            "/ariac/sensors/left_bins_camera/image", rclcpp::SensorDataQoS(), 
+            "/ariac/sensors/left_bins_camera/image", rclcpp::SensorDataQoS(),
             std::bind(&SensorCamera::LeftBinsCameraCallback, this, std::placeholders::_1), bin_cameras_option);
-        
+
         right_bins_camera_sub_ = this->create_subscription<ariac_msgs::msg::AdvancedLogicalCameraImage>(
-            "/ariac/sensors/right_bins_camera/image", rclcpp::SensorDataQoS(), 
+            "/ariac/sensors/right_bins_camera/image", rclcpp::SensorDataQoS(),
             std::bind(&SensorCamera::RightBinsCameraCallback, this, std::placeholders::_1), bin_cameras_option);
-        
+
         competition_state_sub_ = this->create_subscription<ariac_msgs::msg::CompetitionState>(
-            "/ariac/competition_state", 1, std::bind(&SensorCamera::CompetitionStateCallback, this, std::placeholders::_1), 
+            "/ariac/competition_state", 1, std::bind(&SensorCamera::CompetitionStateCallback, this, std::placeholders::_1),
             competition_state_option);
 
         start_competition_client_ = this->create_client<std_srvs::srv::Trigger>("/ariac/start_competition");
@@ -68,10 +66,6 @@ public:
         tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
         // Listen to the buffer of transforms
         tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
-
-        // Initialize the parts timer callback
-        parts_timer_callback_ = this->create_wall_timer(std::chrono::milliseconds((int)(1000.0)),
-                                                       std::bind(&SensorCamera::PartsTimerCallback, this));
     }
 
     ~SensorCamera() {}
@@ -82,15 +76,12 @@ public:
     bool StartCompetition();
 
 private:
-    
     /*!< Current state of the competition. */
     int competition_state_ = -1;
     /*!< Callback group for subscribers. */
     rclcpp::CallbackGroup::SharedPtr cb_group_competition_state_;
     rclcpp::CallbackGroup::SharedPtr cb_group_bin_cameras_;
     rclcpp::CallbackGroup::SharedPtr cb_group_kit_tray_cameras_;
-    /*!< Pointer to timer base. */
-    rclcpp::TimerBase::SharedPtr parts_timer_callback_;
 
     /*==============
     Services
@@ -134,10 +125,7 @@ private:
     void LeftBinsCameraCallback(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void RightBinsCameraCallback(const ariac_msgs::msg::AdvancedLogicalCameraImage::ConstSharedPtr msg);
     void CompetitionStateCallback(const ariac_msgs::msg::CompetitionState::ConstSharedPtr msg);
-    /*===================================
-    Timer Callbacks
-    =====================================*/
-    void PartsTimerCallback();
+
     /*===================================
     Transforms
     =====================================*/
@@ -148,5 +136,18 @@ private:
     =====================================*/
 
     geometry_msgs::msg::Pose MultiplyPose(geometry_msgs::msg::Pose p1, geometry_msgs::msg::Pose p2);
-
+    /**
+     * @brief Helper function to convert a part type to a string
+     *
+     * @param part_type  Part type as an unsigned int
+     * @return std::string  Part type as a string
+     */
+    std::string ConvertPartTypeToString(unsigned int part_type);
+    /**
+     * @brief Helper function to convert a part color to a string
+     *
+     * @param part_color  Part color as an unsigned int
+     * @return std::string  Part color as a string
+     */
+    std::string ConvertPartColorToString(unsigned int part_color)
 };
