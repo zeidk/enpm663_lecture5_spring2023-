@@ -9,6 +9,7 @@
 #include <ariac_msgs/msg/advanced_logical_camera_image.hpp>
 #include <ariac_msgs/msg/competition_state.hpp>
 #include <std_srvs/srv/trigger.hpp>
+#include "tf2_ros/transform_broadcaster.h"
 
 class SensorCamera : public rclcpp::Node
 {
@@ -59,6 +60,9 @@ public:
             competition_state_option);
 
         start_competition_client_ = this->create_client<std_srvs::srv::Trigger>("/ariac/start_competition");
+
+        // Initialize the transforms broadcaster
+        tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     }
 
     ~SensorCamera() {}
@@ -89,7 +93,14 @@ private:
     Services
     ==============*/
     rclcpp::Client<std_srvs::srv::Trigger>::SharedPtr start_competition_client_;
-    bool start_competition_client_done_ = false;
+
+    /*==============
+    Transforms
+    ==============*/
+    /*!< Transform broadcaster. */
+    std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+    /*!< Transform message to broadcast. */
+    geometry_msgs::msg::TransformStamped transf_;
 
     /*==============
     Subscribers
