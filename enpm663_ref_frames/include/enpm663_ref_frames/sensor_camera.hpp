@@ -142,4 +142,11 @@ private:
     Transforms
     =====================================*/
     void ListenTransform(const std::string &source_frame);
+
+    /*===================================
+    Helper functions
+    =====================================*/
+
+    geometry_msgs::msg::Pose MultiplyPose(geometry_msgs::msg::Pose p1, geometry_msgs::msg::Pose p2);
+
 };
