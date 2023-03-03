@@ -149,5 +149,5 @@ private:
      * @param part_color  Part color as an unsigned int
      * @return std::string  Part color as a string
      */
-    std::string ConvertPartColorToString(unsigned int part_color)
+    std::string ConvertPartColorToString(unsigned int part_color);
 };
