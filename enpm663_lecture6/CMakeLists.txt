@@ -36,7 +36,7 @@ install(TARGETS
  sensor_camera
 DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY launch include
+install(DIRECTORY launch include config
   DESTINATION share/${PROJECT_NAME}/
 )
 
